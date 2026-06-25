@@ -4,9 +4,9 @@
  * [POS]: /dashboard/creation/topics 路由 · 创作中心目标达成词管理
  * [PROTOCOL]: 本地确定性生成逻辑仅作前端原型；接入后端时替换 generateCoreTerms / generateSceneTerms
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronDown, ChevronRight, CornerDownRight, Pencil, Plus, Search, Sparkles, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, Plus, Search, Sparkles, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -26,6 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { PageShell } from '../_PageShell'
 import { cn } from '@/lib/utils'
 import { fadeInUp, pageTransition } from '@/lib/motion'
@@ -68,18 +74,32 @@ function generateSceneTerms(coreTerm) {
 }
 
 /* 持久模型 cores: [{ coreTerm, sceneTerms: [] }] ↔ 编辑模型 items: [{ id, value, scenes:[{id,value}] }] */
+const sceneTermValue = (sceneTerm) =>
+  typeof sceneTerm === 'string' ? sceneTerm : sceneTerm?.value ?? ''
+const sceneTermMonitored = (sceneTerm) =>
+  typeof sceneTerm === 'object' && Boolean(sceneTerm?.monitored)
+
 const toCoreItems = (cores) =>
   cores.map((core) => ({
     id: nextTermId(),
     value: core.coreTerm,
-    scenes: core.sceneTerms.map((value) => ({ id: nextTermId(), value })),
+    scenes: core.sceneTerms.map((sceneTerm) => ({
+      id: nextTermId(),
+      value: sceneTermValue(sceneTerm),
+      monitored: sceneTermMonitored(sceneTerm),
+    })),
   }))
 
 const fromCoreItems = (items) =>
   items
     .map((core) => ({
       coreTerm: normalizeKeyword(core.value),
-      sceneTerms: (core.scenes || []).map((s) => normalizeKeyword(s.value)).filter(Boolean),
+      sceneTerms: (core.scenes || [])
+        .map((scene) => ({
+          value: normalizeKeyword(scene.value),
+          monitored: Boolean(scene.monitored),
+        }))
+        .filter((scene) => scene.value),
     }))
     .filter((core) => core.coreTerm)
 
@@ -91,7 +111,12 @@ function buildEntry({ targetKeyword, cores }, date = new Date()) {
   const normalizedCores = cores
     .map((core) => ({
       coreTerm: normalizeKeyword(core.coreTerm),
-      sceneTerms: core.sceneTerms.map(normalizeKeyword).filter(Boolean),
+      sceneTerms: core.sceneTerms
+        .map((sceneTerm) => ({
+          value: normalizeKeyword(sceneTermValue(sceneTerm)),
+          monitored: sceneTermMonitored(sceneTerm),
+        }))
+        .filter((sceneTerm) => sceneTerm.value),
     }))
     .filter((core) => core.coreTerm)
   return {
@@ -105,7 +130,10 @@ function buildEntry({ targetKeyword, cores }, date = new Date()) {
 function buildInitialEntries() {
   const cores = generateCoreTerms(INITIAL_TARGET_KEYWORD).map((coreTerm) => ({
     coreTerm,
-    sceneTerms: generateSceneTerms(coreTerm),
+    sceneTerms: generateSceneTerms(coreTerm).map((value, index) => ({
+      value,
+      monitored: index === 0,
+    })),
   }))
   const entry = buildEntry({ targetKeyword: INITIAL_TARGET_KEYWORD, cores })
   return entry ? [entry] : []
@@ -141,18 +169,23 @@ function CoreTermList({ items, onChange }) {
   )
 }
 
+function IconTooltip({ label, children }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent sideOffset={6}>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 /* 树状编辑器 — 核心词为父节点，场景词缩进挂在其下，类似文件结构 */
 function CoreSceneTree({ items, onChange }) {
   const [collapsed, setCollapsed] = useState({})
-  const [editing, setEditing] = useState({})
   const toggleCollapse = (coreId) =>
     setCollapsed((current) => ({ ...current, [coreId]: !current[coreId] }))
-  const toggleEdit = (coreId) =>
-    setEditing((current) => ({ ...current, [coreId]: !current[coreId] }))
   const updateCore = (coreId, value) =>
     onChange(items.map((core) => (core.id === coreId ? { ...core, value } : core)))
   const removeCore = (coreId) => onChange(items.filter((core) => core.id !== coreId))
-  const addCore = () => onChange([...items, { id: nextTermId(), value: '', scenes: [] }])
   const updateScene = (coreId, sceneId, value) =>
     onChange(
       items.map((core) =>
@@ -167,26 +200,38 @@ function CoreSceneTree({ items, onChange }) {
         core.id === coreId ? { ...core, scenes: core.scenes.filter((s) => s.id !== sceneId) } : core,
       ),
     )
+  const toggleSceneMonitor = (coreId, sceneId) =>
+    onChange(
+      items.map((core) =>
+        core.id === coreId
+          ? {
+              ...core,
+              scenes: core.scenes.map((scene) =>
+                scene.id === sceneId ? { ...scene, monitored: !scene.monitored } : scene,
+              ),
+            }
+          : core,
+      ),
+    )
   const addScene = (coreId) =>
     onChange(
       items.map((core) =>
-        core.id === coreId ? { ...core, scenes: [...core.scenes, { id: nextTermId(), value: '' }] } : core,
+        core.id === coreId ? { ...core, scenes: [...core.scenes, { id: nextTermId(), value: '', monitored: false }] } : core,
       ),
     )
 
-  const readInput = 'h-8 border-transparent bg-transparent! px-2 shadow-none! focus-visible:ring-0 cursor-default'
-  const editInput = 'h-8 px-2'
-  const fieldClass = (isEditing) => (isEditing ? editInput : readInput)
+  const fieldClass =
+    'h-8 border-transparent bg-transparent! px-2 shadow-none! transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:bg-background focus-visible:ring-3 focus-visible:ring-ring/40'
 
   return (
-    <div className="grid gap-2">
+    <TooltipProvider delayDuration={120}>
+      <div className="grid gap-2">
       <div className="grid max-h-[46vh] gap-0.5 overflow-y-auto rounded-md border border-border/60 bg-background/40 p-2">
           {!items.length && (
             <p className="px-2 py-3 text-sm text-muted-foreground">暂无核心词，点击下方按钮添加。</p>
           )}
           {items.map((core) => {
             const isOpen = !collapsed[core.id]
-            const isEditing = !!editing[core.id]
             return (
               <div key={core.id}>
                 {/* 核心词节点 */}
@@ -207,33 +252,32 @@ function CoreSceneTree({ items, onChange }) {
                     value={core.value}
                     onChange={(event) => updateCore(core.id, event.target.value)}
                     placeholder="输入核心词"
-                    readOnly={!isEditing}
-                    className={cn(fieldClass(isEditing), 'font-medium')}
+                    className={cn(fieldClass, 'font-medium')}
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={isEditing ? '完成编辑' : '编辑核心词'}
-                    aria-pressed={isEditing}
-                    className={cn(
-                      'shrink-0 transition-opacity',
-                      isEditing ? 'text-primary' : 'opacity-0 group-hover:opacity-100',
-                    )}
-                    onClick={() => toggleEdit(core.id)}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="删除核心词"
-                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => removeCore(core.id)}
-                  >
-                    <X />
-                  </Button>
+                  <IconTooltip label="添加场景词">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="添加场景词"
+                      className="shrink-0"
+                      onClick={() => addScene(core.id)}
+                    >
+                      <Plus />
+                    </Button>
+                  </IconTooltip>
+                  <IconTooltip label="删除核心词">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="删除核心词"
+                      className="shrink-0"
+                      onClick={() => removeCore(core.id)}
+                    >
+                      <X />
+                    </Button>
+                  </IconTooltip>
                 </div>
 
                 {/* 场景词子节点 */}
@@ -245,52 +289,57 @@ function CoreSceneTree({ items, onChange }) {
                         className="group flex items-center gap-1 rounded-md py-1 pr-1 transition-colors hover:bg-muted/50"
                         style={{ paddingLeft: 32 }}
                       >
-                        <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground/60" />
-                        <Input
-                          value={scene.value}
-                          onChange={(event) => updateScene(core.id, scene.id, event.target.value)}
-                          placeholder="输入场景词"
-                          readOnly={!isEditing}
-                          className={fieldClass(isEditing)}
-                        />
-                        {isEditing && (
+                        <IconTooltip label="删除场景词">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon-sm"
                             aria-label="删除场景词"
-                            className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                            className="size-7 shrink-0 text-muted-foreground"
                             onClick={() => removeScene(core.id, scene.id)}
                           >
                             <X />
                           </Button>
-                        )}
-                      </div>
-                    ))}
-                    {isEditing && (
-                      <div style={{ paddingLeft: 32 }}>
+                        </IconTooltip>
+                        <Input
+                          value={scene.value}
+                          onChange={(event) => updateScene(core.id, scene.id, event.target.value)}
+                          placeholder="输入场景词"
+                          className={fieldClass}
+                        />
+                        <span
+                          className="flex size-7 shrink-0 items-center justify-center"
+                          title={scene.monitored ? '监测中' : '未监测'}
+                          aria-label={scene.monitored ? '监测中' : '未监测'}
+                        >
+                          <span
+                            className={cn(
+                              'size-2.5 rounded-full',
+                              scene.monitored
+                                ? 'bg-chart-4 shadow-[0_0_0_3px_color-mix(in_srgb,var(--chart-4)_18%,transparent)]'
+                                : 'bg-muted-foreground/35',
+                            )}
+                          />
+                        </span>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          leftIcon={<Plus />}
-                          onClick={() => addScene(core.id)}
-                          className="text-muted-foreground"
+                          onClick={() => toggleSceneMonitor(core.id, scene.id)}
+                          className="h-7 shrink-0 px-2 text-xs"
                         >
-                          添加场景词
+                          {scene.monitored ? '剔除监测' : '加入监测'}
                         </Button>
                       </div>
-                    )}
+                    ))}
                   </>
                 )}
               </div>
             )
           })}
         </div>
-      <Button type="button" variant="outline" size="sm" leftIcon={<Plus />} onClick={addCore} className="justify-self-start">
-        添加核心词
-      </Button>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
 
@@ -305,17 +354,20 @@ function AddTargetTermDialog({ open, onOpenChange, onSubmit }) {
   const [targetKeyword, setTargetKeyword] = useState(INITIAL_TARGET_KEYWORD)
   const [coreItems, setCoreItems] = useState([])
 
-  useEffect(() => {
-    if (open) {
-      setStage('input')
-      setTargetKeyword(INITIAL_TARGET_KEYWORD)
-      setCoreItems([])
-    }
-  }, [open])
-
   const normalizedTarget = normalizeKeyword(targetKeyword)
   const validCores = fromCoreItems(coreItems)
   const hasCore = coreItems.some((item) => normalizeKeyword(item.value))
+
+  const resetForm = () => {
+    setStage('input')
+    setTargetKeyword(INITIAL_TARGET_KEYWORD)
+    setCoreItems([])
+  }
+
+  const handleOpenChange = (next) => {
+    if (!next) resetForm()
+    onOpenChange(next)
+  }
 
   const handleGenerateCore = () => {
     if (!normalizedTarget) return
@@ -332,7 +384,11 @@ function AddTargetTermDialog({ open, onOpenChange, onSubmit }) {
         return {
           id: item.id,
           value,
-          scenes: generateSceneTerms(value).map((sceneValue) => ({ id: nextTermId(), value: sceneValue })),
+          scenes: generateSceneTerms(value).map((sceneValue) => ({
+            id: nextTermId(),
+            value: sceneValue,
+            monitored: false,
+          })),
         }
       }),
     )
@@ -342,11 +398,11 @@ function AddTargetTermDialog({ open, onOpenChange, onSubmit }) {
   const handleSave = () => {
     if (!validCores.length) return
     onSubmit({ targetKeyword: normalizedTarget, cores: validCores })
-    onOpenChange(false)
+    handleOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>添加目标达成词</DialogTitle>
@@ -391,7 +447,7 @@ function AddTargetTermDialog({ open, onOpenChange, onSubmit }) {
         <DialogFooter>
           {stage === 'input' && (
             <>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 取消
               </Button>
               <Button type="button" leftIcon={<Sparkles />} onClick={handleGenerateCore} disabled={!normalizedTarget}>
@@ -427,41 +483,53 @@ function AddTargetTermDialog({ open, onOpenChange, onSubmit }) {
 
 /* 详情 / 编辑 — 树状查看并编辑核心词与其场景词 */
 function DetailEditDialog({ entry, onOpenChange, onSave }) {
-  const [coreItems, setCoreItems] = useState([])
+  const [targetKeyword, setTargetKeyword] = useState(entry.targetKeyword)
+  const [coreItems, setCoreItems] = useState(() => toCoreItems(entry.cores))
 
-  useEffect(() => {
-    if (entry) setCoreItems(toCoreItems(entry.cores))
-  }, [entry])
-
+  const normalizedTarget = normalizeKeyword(targetKeyword)
   const validCores = fromCoreItems(coreItems)
   const totalScenes = countScenes(validCores)
+  const addCoreToStart = () =>
+    setCoreItems((current) => [{ id: nextTermId(), value: '', scenes: [] }, ...current])
 
   const handleSave = () => {
-    if (!entry || !validCores.length) return
-    onSave({ ...entry, cores: validCores, updatedAt: formatUpdatedAt(new Date()) })
+    if (!entry || !normalizedTarget || !validCores.length) return
+    onSave({
+      ...entry,
+      targetKeyword: normalizedTarget,
+      cores: validCores,
+      updatedAt: formatUpdatedAt(new Date()),
+    })
     onOpenChange(false)
   }
 
   return (
     <Dialog open={Boolean(entry)} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl" onOpenAutoFocus={(event) => event.preventDefault()}>
+      <DialogContent className="sm:max-w-3xl" onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>目标达成词详情</DialogTitle>
-          <DialogDescription>查看并编辑该目标达成词下的核心词与场景词。</DialogDescription>
+          <DialogTitle className="sr-only">目标达成词详情</DialogTitle>
+          <DialogDescription className="sr-only">查看并编辑该目标达成词下的核心词与场景词</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
             <Label>目标达成词</Label>
-            <div className="rounded-md border border-border/60 bg-muted/40 px-4 py-2 text-sm text-foreground">
-              {entry?.targetKeyword}
-            </div>
+            <Input
+              value={targetKeyword}
+              onChange={(event) => setTargetKeyword(event.target.value)}
+              placeholder="输入目标达成词"
+            />
           </div>
 
           <div className="grid gap-2">
-            <Label>
-              核心词与场景词（{validCores.length} 核心词 · {totalScenes} 场景词）
-            </Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label>
+                核心词与场景词（{validCores.length} 核心词 · {totalScenes} 场景词）
+              </Label>
+              <Button type="button" variant="outline" size="sm" leftIcon={<Plus />} onClick={addCoreToStart}>
+                添加核心词
+              </Button>
+            </div>
             <CoreSceneTree items={coreItems} onChange={setCoreItems} />
           </div>
         </div>
@@ -470,7 +538,7 @@ function DetailEditDialog({ entry, onOpenChange, onSave }) {
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button type="button" onClick={handleSave} disabled={!validCores.length}>
+          <Button type="button" onClick={handleSave} disabled={!normalizedTarget || !validCores.length}>
             保存
           </Button>
         </DialogFooter>
@@ -628,11 +696,14 @@ function Topics() {
         onSubmit={handleAdd}
       />
 
-      <DetailEditDialog
-        entry={editEntry}
-        onOpenChange={(next) => !next && setEditEntry(null)}
-        onSave={handleSaveEdit}
-      />
+      {editEntry && (
+        <DetailEditDialog
+          key={editEntry.id}
+          entry={editEntry}
+          onOpenChange={(next) => !next && setEditEntry(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
 
       <DeleteEntryDialog
         entry={deleteEntry}

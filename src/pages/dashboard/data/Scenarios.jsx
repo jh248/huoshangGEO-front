@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Eye,
   Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/table'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { PageShell, PageSectionCard } from '../_PageShell'
+import { BrandPlanFilter } from './_brandPlanFilter'
 import {
   LineChart,
   MultiLineChart,
@@ -147,19 +149,6 @@ function PlatformGroup({ names }) {
   )
 }
 
-function SnapshotThumb() {
-  return (
-    <div
-      className="h-10 w-14 rounded-md border border-border"
-      style={{
-        background:
-          'repeating-linear-gradient(180deg, var(--muted) 0 2px, transparent 2px 4px), var(--background)',
-      }}
-      aria-hidden
-    />
-  )
-}
-
 function DualChartCard({ trendTitle, trendValue, trend, rankTitle, rankRows, valueLabel, compareSeries, targetName = '理想' }) {
   const [compare, setCompare] = useState(false)
   const showCompare = compare && compareSeries?.length > 0
@@ -224,10 +213,9 @@ function Scenarios() {
   const [rateDateValue, setRateDateValue] = useState({ preset: '7d' })
   const [countDateValue, setCountDateValue] = useState({ preset: '7d' })
   const [scoreDateValue, setScoreDateValue] = useState({ preset: '7d' })
-  const [dateValue, setDateValue] = useState({ preset: '7d' })
   const [platforms, setPlatforms] = useState([])
   const [terms, setTerms] = useState([])
-  const [applied, setApplied] = useState({ date: { preset: '7d' }, platforms: [], terms: [] })
+  const [applied, setApplied] = useState({ platforms: [], terms: [] })
   const [pageSize, setPageSize] = useState('20')
 
   const termOptions = useMemo(
@@ -244,11 +232,11 @@ function Scenarios() {
     })
   }, [applied])
 
-  const onSearch = () => setApplied({ date: dateValue, platforms, terms })
+  const onSearch = () => setApplied({ platforms, terms })
 
   return (
     <TooltipProvider delayDuration={150}>
-      <PageShell>
+      <PageShell actions={<BrandPlanFilter />}>
         {/* ====== 01 提及率 ====== */}
         <PageSectionCard
           title={<SectionTitle name="提及率" />}
@@ -300,7 +288,6 @@ function Scenarios() {
         {/* ====== 04 场景词表 ====== */}
         <PageSectionCard>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <DateFilter value={dateValue} onChange={setDateValue} />
             <PlatformFilter selected={platforms} onChange={setPlatforms} />
             <TermFilter options={termOptions} selected={terms} onChange={setTerms} />
             <Button size="sm" leftIcon={<Search />} onClick={onSearch} className="ml-auto">
@@ -316,8 +303,8 @@ function Scenarios() {
                   <TableHead className="w-12">序号</TableHead>
                   <TableHead>场景词</TableHead>
                   <TableHead>监测平台</TableHead>
-                  <TableHead>会话截图</TableHead>
                   <TableHead>最近更新时间</TableHead>
+                  <TableHead className="w-20">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -337,8 +324,13 @@ function Scenarios() {
                     <TableCell className="tabular-nums text-muted-foreground">{row.id}</TableCell>
                     <TableCell className="max-w-xs truncate font-medium">{row.term}</TableCell>
                     <TableCell><PlatformGroup names={row.platforms} /></TableCell>
-                    <TableCell><SnapshotThumb /></TableCell>
                     <TableCell className="text-muted-foreground">{row.updated}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1">
+                        <Eye className="size-4" />
+                        详情
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

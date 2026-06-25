@@ -119,7 +119,7 @@ function PromptFormDialog({ open, prompt, onOpenChange, onSubmit }) {
             value={description}
             onChange={setDescription}
             max={500}
-            placeholder="请输入提示词描述"
+            placeholder="输入描述，帮你生成简版提示词；不填则不生成"
             textarea
           />
 
@@ -232,14 +232,13 @@ function Prompts() {
             animate="visible"
             className="overflow-hidden rounded-md border border-border bg-card"
           >
-            <Table className="min-w-[1040px] table-fixed">
+            <Table className="min-w-[720px] table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="w-[24%] pl-4">提示词名称</TableHead>
-                  <TableHead className="w-[36%]">提示词描述</TableHead>
-                  <TableHead className="w-[10%]">最新版本</TableHead>
-                  <TableHead className="w-[20%]">更新时间</TableHead>
-                  <TableHead className="w-[10%] pr-4 text-right">操作</TableHead>
+                  <TableHead className="w-[18rem] pl-4">提示词名称</TableHead>
+                  <TableHead className="w-28">最新版本</TableHead>
+                  <TableHead className="w-56">更新时间</TableHead>
+                  <TableHead className="w-24 pr-4 text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -248,11 +247,6 @@ function Prompts() {
                     <TableCell className="pl-4 font-medium text-foreground">
                       <div className="max-w-full truncate" title={row.name}>
                         {row.name}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <div className="max-w-full truncate" title={row.description}>
-                        {row.description || '—'}
                       </div>
                     </TableCell>
                     <TableCell className="tabular-nums text-muted-foreground">{row.version}</TableCell>

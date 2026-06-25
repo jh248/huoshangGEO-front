@@ -61,7 +61,7 @@ export const DASHBOARD_NAV = [
     label: '创作中心',
     Icon: PenSquare,
     items: [
-      { to: '/dashboard/creation/topics', label: '核心词管理', Icon: Lightbulb },
+      { to: '/dashboard/creation/topics', label: '目标词管理', Icon: Lightbulb },
       { to: '/dashboard/creation/articles', label: '文章列表', Icon: ListTree },
       { to: '/dashboard/creation/prompts', label: '提示词管理', Icon: Wand2 },
     ],

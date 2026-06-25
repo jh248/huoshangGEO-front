@@ -89,6 +89,12 @@ function MultiSelect({
     onValueChange?.(next)
   }
 
+  const handleRowKeyDown = (event, action) => {
+    if (event.key !== "Enter" && event.key !== " ") return
+    event.preventDefault()
+    action()
+  }
+
   const toggleAll = () =>
     commit(allChecked ? [] : options.map((o) => o.value))
 
@@ -132,9 +138,11 @@ function MultiSelect({
         )}
 
         {/* 全部主开关 · 反色 Pill (与选项行视觉对比) */}
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           onClick={toggleAll}
+          onKeyDown={(event) => handleRowKeyDown(event, toggleAll)}
           className={cn(
             "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors",
             allChecked
@@ -149,7 +157,7 @@ function MultiSelect({
           <span className="text-xs tabular-nums text-muted-foreground">
             {options.length}
           </span>
-        </button>
+        </div>
 
         <hr className="my-2 border-border" />
 
@@ -159,10 +167,12 @@ function MultiSelect({
             {filtered.map((o) => {
               const checked = selected.includes(o.value)
               return (
-                <button
+                <div
                   key={o.value}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggleOne(o.value)}
+                  onKeyDown={(event) => handleRowKeyDown(event, () => toggleOne(o.value))}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
                     "bg-muted/60 text-foreground hover:bg-muted",
@@ -178,7 +188,7 @@ function MultiSelect({
                   ) : (
                     <span className="flex-1 truncate">{o.label}</span>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>

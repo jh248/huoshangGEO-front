@@ -9,15 +9,27 @@ import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowUp,
+  Bot,
+  Braces,
   Check,
-  Image,
-  Infinity as InfinityIcon,
-  Mic,
+  Database,
+  History,
   Plus,
   Save,
+  Send,
   Type,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -51,6 +63,27 @@ const INITIAL_HTML = `
 <p>RAG = Retrieval-Augmented Generation = 检索增强生成。</p>
 `
 
+const MODEL_OPTIONS = [
+  { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'doubao', label: '豆包' },
+  { value: 'kimi', label: 'Kimi' },
+  { value: 'chatgpt', label: 'ChatGPT' },
+]
+
+const HISTORY_ITEMS = [
+  { id: 'h1', title: '知识库调研文章优化', time: '今天 09:12' },
+  { id: 'h2', title: '护眼大路灯种草长文', time: '昨天 18:40' },
+  { id: 'h3', title: '品牌监测复盘提纲', time: '06-22 16:20' },
+]
+
+const MEDIA_POOL = [
+  { id: 'baijiahao', name: '百家号' },
+  { id: 'toutiao', name: '今日头条' },
+  { id: 'zhihu', name: '知乎' },
+  { id: 'sohu', name: '搜狐号' },
+  { id: 'juejin', name: '掘金' },
+]
+
 function IconButton({ label, icon, active = false, circle = false, onClick }) {
   return (
     <Tooltip>
@@ -75,27 +108,53 @@ function IconButton({ label, icon, active = false, circle = false, onClick }) {
 }
 
 function TaskComposer({ chatDraft, setChatDraft, onSend }) {
+  const [model, setModel] = useState(MODEL_OPTIONS[0].value)
+  const selectedModel = MODEL_OPTIONS.find((item) => item.value === model) ?? MODEL_OPTIONS[0]
+
   return (
-    <div className="rounded-3xl border border-border bg-background p-5">
+    <div className="flex min-h-32 max-h-[50svh] resize-y flex-col overflow-auto rounded-md border border-border p-3">
       <Textarea
         value={chatDraft}
         onChange={(event) => setChatDraft(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault()
             onSend()
           }
         }}
-        placeholder="消息"
+        placeholder="开始创作，回车发送，Shift+回车换行"
         aria-label="任务输入"
-        className="min-h-32 resize-none border-0 bg-transparent px-0 text-lg shadow-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
+        className="min-h-16 flex-1 resize-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none focus-visible:border-transparent focus-visible:ring-0"
       />
-      <div className="mt-4 flex items-center gap-2">
-        <IconButton label="添加" icon={<Plus />} circle />
-        <IconButton label="插入图片" icon={<Image />} circle />
+      <div className="mt-2 flex items-center gap-2">
+        <IconButton label="选择知识库" icon={<Database />} />
+        <IconButton label="选择 Prompt" icon={<Braces />} />
         <div className="flex-1" />
-        <IconButton label="持续任务" icon={<InfinityIcon />} />
-        <IconButton label="语音" icon={<Mic />} />
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="选择模型"
+                  className="size-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <Bot />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>选择模型：{selectedModel.label}</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end">
+            {MODEL_OPTIONS.map((option) => (
+              <DropdownMenuItem key={option.value} onClick={() => setModel(option.value)}>
+                <span className="flex-1">{option.label}</span>
+                {model === option.value && <Check className="size-4" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           size="icon"
           aria-label="发送"
@@ -110,9 +169,89 @@ function TaskComposer({ chatDraft, setChatDraft, onSend }) {
   )
 }
 
+function HistoryMenu() {
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="历史对话"
+              className="size-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <History />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>历史对话</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" className="w-64">
+        {HISTORY_ITEMS.map((item) => (
+          <DropdownMenuItem key={item.id} className="flex-col items-start gap-0.5">
+            <span className="text-sm font-medium">{item.title}</span>
+            <span className="text-xs text-muted-foreground">{item.time}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function PublishArticleDialog({ open, mediaIds, onToggleMedia, onOpenChange, onConfirm }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>文章发布</DialogTitle>
+          <DialogDescription>选择文章要发布到的媒体，媒体来源与发布任务保持一致。</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">发布媒体</span>
+            <span className="text-xs text-muted-foreground">已选 {mediaIds.length} 个</span>
+          </div>
+          <ScrollArea className="h-44 rounded-md border border-border">
+            <div className="grid gap-1 p-2">
+              {MEDIA_POOL.map((media) => {
+                const checked = mediaIds.includes(media.id)
+                return (
+                  <button
+                    key={media.id}
+                    type="button"
+                    onClick={() => onToggleMedia(media.id)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted',
+                      checked && 'bg-primary/10',
+                    )}
+                  >
+                    <Checkbox checked={checked} className="pointer-events-none" />
+                    <span className="truncate">{media.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            取消
+          </Button>
+          <Button type="button" leftIcon={<Send />} disabled={mediaIds.length === 0} onClick={onConfirm}>
+            确认发布
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /* 编辑器顶部工具条 — 保存文章 + 插入块(+) + 文字样式(Aa) */
-function EditorToolbar({ editorRef, onSave, saved, onBack }) {
-  const run = (apply) => () => {
+function EditorToolbar({ editorRef, onSave, onPublish, saved, onBack }) {
+  const runCommand = (apply) => {
     const editor = editorRef.current?.editor
     if (editor) apply(editor.chain().focus()).run()
   }
@@ -130,16 +269,16 @@ function EditorToolbar({ editorRef, onSave, saved, onBack }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={run((c) => c.setParagraph())}>正文</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleHeading({ level: 1 }))}>标题 1</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleHeading({ level: 2 }))}>标题 2</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleHeading({ level: 3 }))}>标题 3</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.setParagraph())}>正文</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleHeading({ level: 1 }))}>标题 1</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleHeading({ level: 2 }))}>标题 2</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleHeading({ level: 3 }))}>标题 3</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={run((c) => c.toggleBulletList())}>无序列表</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleOrderedList())}>有序列表</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleBlockquote())}>引用</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleCodeBlock())}>代码块</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.setHorizontalRule())}>分割线</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleBulletList())}>无序列表</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleOrderedList())}>有序列表</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleBlockquote())}>引用</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleCodeBlock())}>代码块</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.setHorizontalRule())}>分割线</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -150,22 +289,43 @@ function EditorToolbar({ editorRef, onSave, saved, onBack }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={run((c) => c.toggleBold())}>加粗</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleItalic())}>斜体</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleStrike())}>删除线</DropdownMenuItem>
-          <DropdownMenuItem onClick={run((c) => c.toggleCode())}>行内代码</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleBold())}>加粗</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleItalic())}>斜体</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleStrike())}>删除线</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => runCommand((c) => c.toggleCode())}>行内代码</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button
-        variant="outline"
-        size="sm"
-        leftIcon={saved ? <Check /> : <Save />}
-        onClick={onSave}
-        className="ml-auto"
-      >
-        {saved ? '已保存' : '保存文章'}
-      </Button>
+      <div className="ml-auto flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={saved ? '已保存' : '保存文章'}
+              onClick={onSave}
+              className="text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
+            >
+              {saved ? <Check /> : <Save />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{saved ? '已保存' : '保存文章'}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="文章发布"
+              onClick={onPublish}
+              className="text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
+            >
+              <Send />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>文章发布</TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   )
 }
@@ -174,6 +334,8 @@ function ContentCreate() {
   const navigate = useNavigate()
   const [chatDraft, setChatDraft] = useState('')
   const [saved, setSaved] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishMediaIds, setPublishMediaIds] = useState([MEDIA_POOL[0].id])
   const editorRef = useRef(null)
 
   const [asideWidth, setAsideWidth] = useState(440)
@@ -192,6 +354,17 @@ function ContentCreate() {
     // TODO: 接入后端保存接口；当前仅做前端反馈
     setSaved(true)
     window.setTimeout(() => setSaved(false), 2000)
+  }
+
+  const togglePublishMedia = (id) => {
+    setPublishMediaIds((current) => (
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    ))
+  }
+
+  const handlePublish = () => {
+    if (publishMediaIds.length === 0) return
+    setPublishOpen(false)
   }
 
   const startResize = (event) => {
@@ -222,12 +395,13 @@ function ContentCreate() {
       >
         <div
           ref={containerRef}
-          className="flex h-full w-full max-w-full overflow-hidden rounded-3xl border border-transparent bg-background"
+          className="flex h-full w-full max-w-full overflow-hidden rounded-none border border-transparent bg-background"
         >
           <section className="flex min-w-0 flex-1 flex-col bg-background">
             <EditorToolbar
               editorRef={editorRef}
               onSave={handleSave}
+              onPublish={() => setPublishOpen(true)}
               saved={saved}
               onBack={() => navigate('/dashboard/creation/articles')}
             />
@@ -257,9 +431,11 @@ function ContentCreate() {
             className="flex shrink-0 flex-col bg-background"
           >
             <div className="flex min-h-0 flex-1 flex-col px-6 pb-6">
+              <div className="flex shrink-0 justify-end py-4">
+                <HistoryMenu />
+              </div>
               <div className="min-h-0 flex-1" />
               <div>
-                <h2 className="mb-6 text-3xl font-bold tracking-normal">有什么我可以帮你的吗?</h2>
                 <TaskComposer
                   chatDraft={chatDraft}
                   setChatDraft={setChatDraft}
@@ -270,6 +446,13 @@ function ContentCreate() {
           </aside>
         </div>
       </main>
+      <PublishArticleDialog
+        open={publishOpen}
+        mediaIds={publishMediaIds}
+        onToggleMedia={togglePublishMedia}
+        onOpenChange={setPublishOpen}
+        onConfirm={handlePublish}
+      />
     </TooltipProvider>
   )
 }

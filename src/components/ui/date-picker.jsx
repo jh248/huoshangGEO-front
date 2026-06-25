@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 react、lucide-react、ui/Button+Popover、@/lib/utils 的 cn
- * [OUTPUT]: 命名导出 Calendar (月网格 · single|range) / DatePicker (单日) / DateTimePicker (日历+时分秒滚轮+此刻/确定) / TimePicker (仅时分秒滚轮)
+ * [OUTPUT]: 命名导出 Calendar (月网格 · single|range) / DatePicker (单日) / DateTimePicker (日历+时分秒/时分滚轮+此刻/确定) / TimePicker (仅时分秒/时分滚轮)
  * [POS]: components/ui 设计系统原语；DateFilter (区间) 与 调度 (单日/日期时间/时间) 共同复用，消除日历复刻品
  * [PROTOCOL]: ymd = { year, month(0-11), day }；single 用 selected、range 用 {start,end}；fromToday 禁选过去
  *             变更时更新此头部，然后检查 CLAUDE.md
@@ -138,8 +138,12 @@ function splitTime(t) {
   const [h = "00", m = "00", s = "00"] = (t || "").split(":")
   return [h, m, s]
 }
-function joinTime(parts) {
-  return parts.join(":")
+function joinTime(parts, precision = "second") {
+  return precision === "minute" ? `${parts[0]}:${parts[1]}:00` : parts.join(":")
+}
+
+function displayTime(parts, precision = "second") {
+  return precision === "minute" ? `${parts[0]}:${parts[1]}` : parts.join(":")
 }
 function nowTime() {
   const d = new Date()
@@ -149,8 +153,8 @@ function nowTime() {
 /* ============================================================================
  * TimeColumns · 时/分/秒 三列滚动选择 (内部复用)
  * ========================================================================== */
-function TimeColumns({ parts, onSelect }) {
-  const cols = [HOUR_LIST, MINSEC_LIST, MINSEC_LIST]
+function TimeColumns({ parts, onSelect, precision = "second" }) {
+  const cols = precision === "minute" ? [HOUR_LIST, MINSEC_LIST] : [HOUR_LIST, MINSEC_LIST, MINSEC_LIST]
   return (
     <div className="flex">
       {cols.map((options, idx) => (
@@ -234,9 +238,9 @@ export function DatePicker({ value = null, onChange, placeholder = "选择日期
 }
 
 /* ============================================================================
- * DateTimePicker · 日历 + 时分秒滚轮 + 此刻/确定，date: ymd|null · time: 'HH:MM:SS'
+ * DateTimePicker · 日历 + 时分秒/时分滚轮 + 此刻/确定，date: ymd|null · time: 'HH:MM:SS'
  * ========================================================================== */
-export function DateTimePicker({ date = null, time = "00:00:00", onChange, placeholder = "选择日期时间", fromToday = false, className }) {
+export function DateTimePicker({ date = null, time = "00:00:00", onChange, placeholder = "选择日期时间", fromToday = false, className, precision = "second" }) {
   const [open, setOpen] = useState(false)
   const parts = splitTime(time)
 
@@ -244,11 +248,12 @@ export function DateTimePicker({ date = null, time = "00:00:00", onChange, place
   const pickTime = (idx, val) => {
     const next = splitTime(time)
     next[idx] = val
-    onChange?.(date, joinTime(next))
+    onChange?.(date, joinTime(next, precision))
   }
   const setNow = () => {
     const d = new Date()
-    onChange?.({ year: d.getFullYear(), month: d.getMonth(), day: d.getDate() }, nowTime())
+    const next = splitTime(nowTime())
+    onChange?.({ year: d.getFullYear(), month: d.getMonth(), day: d.getDate() }, joinTime(next, precision))
   }
 
   return (
@@ -258,7 +263,7 @@ export function DateTimePicker({ date = null, time = "00:00:00", onChange, place
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 text-muted-foreground" />
             <span className={cn("tabular-nums", !date && "text-muted-foreground")}>
-              {date ? `${formatDash(date)} ${joinTime(parts)}` : placeholder}
+              {date ? `${formatDash(date)} ${displayTime(parts, precision)}` : placeholder}
             </span>
           </span>
           <ChevronDown className="size-4 text-muted-foreground" />
@@ -271,9 +276,9 @@ export function DateTimePicker({ date = null, time = "00:00:00", onChange, place
           </div>
           <div className="flex flex-col">
             <div className="border-b border-border px-3 py-2 text-center text-sm font-medium tabular-nums">
-              {joinTime(parts)}
+              {displayTime(parts, precision)}
             </div>
-            <TimeColumns parts={parts} onSelect={pickTime} />
+            <TimeColumns parts={parts} onSelect={pickTime} precision={precision} />
           </div>
         </div>
         <PickerFooter onNow={setNow} onOk={() => setOpen(false)} />
@@ -283,16 +288,16 @@ export function DateTimePicker({ date = null, time = "00:00:00", onChange, place
 }
 
 /* ============================================================================
- * TimePicker · 仅时分秒滚轮 + 此刻/确定，value: 'HH:MM:SS'
+ * TimePicker · 仅时分秒/时分滚轮 + 此刻/确定，value: 'HH:MM:SS'
  * ========================================================================== */
-export function TimePicker({ value = "00:00:00", onChange, className }) {
+export function TimePicker({ value = "00:00:00", onChange, className, precision = "second" }) {
   const [open, setOpen] = useState(false)
   const parts = splitTime(value)
 
   const pickTime = (idx, val) => {
     const next = splitTime(value)
     next[idx] = val
-    onChange?.(joinTime(next))
+    onChange?.(joinTime(next, precision))
   }
 
   return (
@@ -301,17 +306,20 @@ export function TimePicker({ value = "00:00:00", onChange, className }) {
         <button type="button" className={cn(TRIGGER_CLS, "w-32", className)}>
           <span className="flex items-center gap-2">
             <Clock className="size-4 text-muted-foreground" />
-            <span className="tabular-nums">{joinTime(parts)}</span>
+            <span className="tabular-nums">{displayTime(parts, precision)}</span>
           </span>
           <ChevronDown className="size-4 text-muted-foreground" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto rounded-md p-0">
         <div className="border-b border-border px-3 py-2 text-center text-sm font-medium tabular-nums">
-          {joinTime(parts)}
+          {displayTime(parts, precision)}
         </div>
-        <TimeColumns parts={parts} onSelect={pickTime} />
-        <PickerFooter onNow={() => onChange?.(nowTime())} onOk={() => setOpen(false)} />
+        <TimeColumns parts={parts} onSelect={pickTime} precision={precision} />
+        <PickerFooter
+          onNow={() => onChange?.(joinTime(splitTime(nowTime()), precision))}
+          onOk={() => setOpen(false)}
+        />
       </PopoverContent>
     </Popover>
   )

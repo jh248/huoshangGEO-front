@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PageShell, PageSectionCard } from '../_PageShell'
+import { BrandPlanFilter } from './_brandPlanFilter'
 import { DonutChart, PlatformBadge, seriesColor } from './_charts'
 import { DateFilter, PlatformFilter, TermFilter } from './_filters'
 
@@ -227,7 +228,7 @@ function Citations() {
   const pages = [1, 2, 3, 4]
 
   return (
-    <PageShell>
+    <PageShell actions={<BrandPlanFilter />}>
       {/* ====== Top 引用数据 ====== */}
       <PageSectionCard
         title="Top引用数据"

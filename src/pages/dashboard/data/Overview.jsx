@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 ui/Badge+Table+NumberTicker，lucide 图标，本地 _charts(GaugeRing/ScatterChart/LineChart/PlatformBadge)，PageShell+PageSectionCard
- * [OUTPUT]: 默认导出 DataOverview — GEO 健康总览 (GEO 计分卡 + 3 KPI + 趋势分析[得分+提及率·共享 DateFilter] + 竞品 TOP10 + 舆情分析 + 竞争位置散点)
+ * [INPUT]: 依赖 ui/Badge+Table+NumberTicker，lucide 图标，本地 _charts(GaugeRing/ScatterChart/PlatformBadge)，PageShell+PageSectionCard
+ * [OUTPUT]: 默认导出 DataOverview — GEO 健康总览 (GEO 计分卡 + 3 KPI + 竞品 TOP10 + 舆情分析 + 竞争位置散点)
  * [POS]: /dashboard/data/overview 路由，登录后默认落地页；数据骨架对齐《GEO 品牌检测报告》
  * [PROTOCOL]: mock 数据写在模块顶部常量；颜色一律走 var(--token)；图表全部走 ./_charts，不引第三方
  */
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,52 +26,14 @@ import {
 } from '@/components/ui/table'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { PageShell, PageSectionCard } from '../_PageShell'
-import { GaugeRing, ScatterChart, LineChart, PlatformBadge } from './_charts'
-import { DateFilter } from './_filters'
+import { BrandPlanFilter } from './_brandPlanFilter'
+import { GaugeRing, ScatterChart, PlatformBadge } from './_charts'
 
 /* ============================================================================
  * Mock 数据 (单一真相 · 对齐 GEO 品牌检测报告)
  * ========================================================================== */
 /* GEO 得分 · delta = 最新一次检测 对比 上一次检测 */
 const GEO = { score: 43.4, grade: '中等', rank: 5, total: 10, delta: { up: true, good: true, text: '+1.4' } }
-
-/* 趋势数据 · 由 DateFilter 选定的时间段动态生成 (终点对齐当前 GEO 43.4 / 提及率 50%) */
-const TODAY = new Date(2026, 5, 13)
-const fmtMD = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
-function daysFromRange(value) {
-  if (value.preset === 'yesterday') return 2
-  if (value.preset === '30d') return 30
-  if (value.preset === 'custom' && value.start && value.end) {
-    const s = new Date(value.start.year, value.start.month, value.start.day)
-    const e = new Date(value.end.year, value.end.month, value.end.day)
-    const diff = Math.round(Math.abs(e - s) / 86400000) + 1
-    return Math.min(Math.max(diff, 2), 90)
-  }
-  return 7
-}
-
-function buildTrend(days) {
-  const n = Math.max(days, 2)
-  const startScore = Math.max(30, 43.4 - days * 0.5)
-  const startRate = Math.max(8, 50 - days * 1.2)
-  const score = []
-  const rate = []
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1)
-    score.push(Math.round((startScore + (43.4 - startScore) * t) * 10) / 10)
-    rate.push(Math.round(startRate + (50 - startRate) * t))
-  }
-  const tickCount = Math.min(n, 7)
-  const labels = []
-  for (let k = 0; k < tickCount; k++) {
-    const idx = Math.round((k / (tickCount - 1)) * (n - 1))
-    const d = new Date(TODAY)
-    d.setDate(TODAY.getDate() - (n - 1 - idx))
-    labels.push(fmtMD(d))
-  }
-  return { score, rate, labels }
-}
 
 /* KPI · value = 最新一次检测；delta = 对比上一次检测的变化 */
 const KPIS = [
@@ -336,11 +298,8 @@ function SentimentHeatmap() {
  * 主体页面
  * ========================================================================== */
 function DataOverview() {
-  const [dateValue, setDateValue] = useState({ preset: '7d' })
-  const trend = useMemo(() => buildTrend(daysFromRange(dateValue)), [dateValue])
-
   return (
-    <PageShell>
+    <PageShell actions={<BrandPlanFilter />}>
       {/* ====== 01 GEO 计分卡 (无外框 · 无标题 · 4 卡直接铺开) ====== */}
       <section>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -370,24 +329,6 @@ function DataOverview() {
           ))}
         </div>
       </section>
-
-      {/* ====== 03 趋势分析 (合并卡 · GEO 得分 + 品牌提及率 · 共享时间段筛选) ====== */}
-      <PageSectionCard
-        title="趋势分析"
-        desc="品牌综合得分趋势与品牌提及率趋势变化"
-        actions={<DateFilter value={dateValue} onChange={setDateValue} />}
-      >
-        <div className="grid gap-4">
-          <div className="rounded-md border border-border bg-background/40 p-4">
-            <p className="mb-3 text-sm font-medium text-foreground">GEO 综合得分趋势</p>
-            <LineChart values={trend.score} height={200} labels={trend.labels} />
-          </div>
-          <div className="rounded-md border border-border bg-background/40 p-4">
-            <p className="mb-3 text-sm font-medium text-foreground">品牌提及率趋势</p>
-            <LineChart values={trend.rate} height={200} labels={trend.labels} />
-          </div>
-        </div>
-      </PageSectionCard>
 
       {/* ====== 04 竞品 GEO 得分 TOP10 ====== */}
       <PageSectionCard
