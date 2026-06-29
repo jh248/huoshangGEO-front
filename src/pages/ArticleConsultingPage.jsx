@@ -1,10 +1,11 @@
 /**
- * [INPUT]: 依赖 react、framer-motion、layout/Header + landing/Footer、ui 原子件、lib/motion
+ * [INPUT]: 依赖 react、react-router-dom、framer-motion、layout/Header + landing/Footer、ui 原子件、lib/motion、lib/article-news
  * [OUTPUT]: 默认导出 ArticleConsultingPage — 公开文章资讯列表页 (搜索 + 分类筛选 + 文章卡片)
  * [POS]: /article-consulting 路由，承接顶部导航「文章资讯」
  * [PROTOCOL]: 页面仅做前端原型编排，文章数据为 mock；后续接口接入时替换 ARTICLES
  */
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
+import articleConsultingBanner from "@/assets/article/article-consulting-banner.jpg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,65 +35,7 @@ import {
   staggerItem,
   tapScale,
 } from "@/lib/motion";
-
-const CATEGORIES = ["全部", "GEO 入门", "品牌诊断", "内容策略", "案例拆解"];
-
-const ARTICLES = [
-  {
-    title: "AI 搜索时代，品牌内容为什么要重写一遍",
-    summary:
-      "从关键词排名转向答案占位，品牌需要把产品信息整理成 AI 更容易引用的结构。",
-    category: "GEO 入门",
-    date: "2026-06-18",
-    readTime: "6 分钟",
-    image: "https://picsum.photos/seed/geo-search-content/960/640",
-  },
-  {
-    title: "一次品牌诊断报告里，最该先看哪三个指标",
-    summary:
-      "提及率、引用来源和情感倾向共同决定品牌在生成式回答里的真实位置。",
-    category: "品牌诊断",
-    date: "2026-06-14",
-    readTime: "5 分钟",
-    image: "https://picsum.photos/seed/brand-diagnosis-report/960/640",
-  },
-  {
-    title: "让 AI 引用你的官网，而不是引用二手信息",
-    summary:
-      "官网内容需要承担权威信息源角色，帮助模型找到稳定、可信、可复核的品牌答案。",
-    category: "内容策略",
-    date: "2026-06-11",
-    readTime: "7 分钟",
-    image: "https://picsum.photos/seed/official-brand-source/960/640",
-  },
-  {
-    title: "从 0 次提及开始，如何规划第一批场景问题",
-    summary:
-      "场景问题不是简单问答清单，而是用户意图、业务优势和模型语料的交汇点。",
-    category: "内容策略",
-    date: "2026-06-07",
-    readTime: "8 分钟",
-    image: "https://picsum.photos/seed/scenario-prompts-plan/960/640",
-  },
-  {
-    title: "竞品已经被 AI 推荐时，你还能做什么",
-    summary:
-      "先找出竞品被推荐的理由，再用可验证内容补齐模型回答中的品牌缺口。",
-    category: "案例拆解",
-    date: "2026-06-03",
-    readTime: "6 分钟",
-    image: "https://picsum.photos/seed/competitor-ai-recommendation/960/640",
-  },
-  {
-    title: "GEO 内容不是多发文章，而是建立答案资产",
-    summary:
-      "把分散内容沉淀成可持续复用的答案资产，才能稳定提升生成式搜索可见性。",
-    category: "GEO 入门",
-    date: "2026-05-29",
-    readTime: "4 分钟",
-    image: "https://picsum.photos/seed/answer-assets-library/960/640",
-  },
-];
+import { ARTICLES, CATEGORIES } from "@/lib/article-news";
 
 function ArticleConsultingPage() {
   const [activeCategory, setActiveCategory] = useState("全部");
@@ -124,19 +68,24 @@ function ArticleConsultingPage() {
     >
       <Header transparent />
       <main className="flex-1">
-        <section className="relative overflow-hidden px-4 pb-12 pt-28 sm:pb-16 sm:pt-32">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(20rem,0.95fr)] lg:items-end">
+        <section className="relative overflow-hidden px-4 pb-6 pt-24 sm:pb-8 sm:pt-24">
+          <motion.div
+            variants={staggerItem}
+            initial="hidden"
+            animate="visible"
+            className="skeu-raised relative mx-auto flex min-h-44 max-w-6xl items-center overflow-hidden rounded-3xl sm:min-h-52 lg:aspect-[1920/340] lg:min-h-0"
+          >
+            <img
+              src={articleConsultingBanner}
+              alt="文章资讯内容库"
+              className="absolute inset-0 size-full object-cover object-left lg:object-cover"
+            />
             <motion.div
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="max-w-3xl"
+              className="relative max-w-2xl px-6 py-7 sm:px-10 lg:px-14 lg:py-0"
             >
-              <motion.div variants={staggerItem}>
-                <Badge variant="secondary" className="mb-5">
-                  文章资讯
-                </Badge>
-              </motion.div>
               <motion.h1
                 variants={staggerItem}
                 className="text-balance text-4xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl"
@@ -145,25 +94,12 @@ function ArticleConsultingPage() {
               </motion.h1>
               <motion.p
                 variants={staggerItem}
-                className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+                className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
               >
-                汇总 GEO 方法、品牌诊断和内容策略，帮助团队把文章变成可被 AI 引用的答案资产。
+                盈匠火山 GEO 的一线实战洞察，汇集生成式引擎优化方法、品牌 AI 可见度诊断与内容策略，帮你的品牌进入 AI 的答案。
               </motion.p>
             </motion.div>
-
-            <motion.div
-              variants={staggerItem}
-              initial="hidden"
-              animate="visible"
-              className="skeu-raised overflow-hidden rounded-3xl bg-card"
-            >
-              <img
-                src="https://picsum.photos/seed/geo-editorial-library/1120/840"
-                alt="文章资讯内容库"
-                className="aspect-[4/3] w-full object-cover"
-              />
-            </motion.div>
-          </div>
+          </motion.div>
         </section>
 
         <section id="article-list" className="px-4 pb-20">
@@ -218,7 +154,12 @@ function ArticleConsultingPage() {
                     whileTap={tapScale}
                   >
                     <motion.div variants={hoverLift} className="h-full">
-                      <Card className="h-full">
+                      <Link
+                        to={`/article-consulting/${article.slug}`}
+                        aria-label={`阅读文章：${article.title}`}
+                        className="block h-full rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                      <Card className="h-full cursor-pointer">
                         <div className="px-5 pt-5">
                           <img
                             src={article.image}
@@ -249,12 +190,13 @@ function ArticleConsultingPage() {
                             <CalendarDays className="size-3" />
                             {article.date}
                           </span>
-                          <Button variant="ghost" size="sm">
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
                             阅读
                             <ArrowRight />
-                          </Button>
+                          </span>
                         </CardFooter>
                       </Card>
+                      </Link>
                     </motion.div>
                   </motion.article>
                 ))}

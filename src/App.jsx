@@ -15,6 +15,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import LandingPage from '@/pages/LandingPage'
 import BrandDiagnosisPage from '@/pages/BrandDiagnosisPage'
 import ArticleConsultingPage from '@/pages/ArticleConsultingPage'
+import ArticleDetailPage from '@/pages/ArticleDetailPage'
 import CasesPage from '@/pages/CasesPage'
 import DesignSystem from '@/pages/DesignSystem'
 import DataOverview from '@/pages/dashboard/data/Overview'
@@ -53,6 +54,7 @@ function withPermission(permissionKey, element) {
 // /                              LandingPage    自带 chrome
 // /brand-diagnosis               BrandDiagnosisPage 公开品牌诊断 / 实时搜索页
 // /article-consulting            ArticleConsultingPage 公开文章资讯 / 文章列表页
+// /article-consulting/:slug      ArticleDetailPage 公开文章资讯 / 文章详情页
 // /design-system                 DesignSystem   Layout 包裹
 // /dashboard                     RequireAuth → DashboardLayout
 //   ├ data/overview              DataOverview   登录默认落地
@@ -70,6 +72,7 @@ function AnimatedRoutes() {
         <Route index element={<LandingPage />} />
         <Route path="brand-diagnosis" element={<BrandDiagnosisPage />} />
         <Route path="article-consulting" element={<ArticleConsultingPage />} />
+        <Route path="article-consulting/:slug" element={<ArticleDetailPage />} />
 
         <Route element={<Layout />}>
           <Route path="design-system" element={<DesignSystem />} />

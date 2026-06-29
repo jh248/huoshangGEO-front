@@ -5,6 +5,7 @@
 
 LandingPage.jsx: / 路由，"承诺 → 逐屏兑现" 编排 (Hero → Accountability(对结果负责) → Ranking(行业榜单) → BrandSite(品牌官网·权威信息源) → EngineLoop(增长引擎) → Comparison(区隔对手) → FinalCTA → Footer)，自带 layout/Header + landing/Footer，不走 Layout 路由包裹
 ArticleConsultingPage.jsx: /article-consulting 路由，公开文章资讯列表页 (Hero + 分类筛选 + 搜索 + 文章卡片)，自带 layout/Header + landing/Footer，不走 Layout 路由包裹
+ArticleDetailPage.jsx: /article-consulting/:slug 路由，公开文章资讯详情页 (返回文章资讯 + 标题元信息 + 封面 + 正文)，自带 layout/Header + landing/Footer，不走 Layout 路由包裹
 DesignSystem.jsx: /design-system 路由，shadcn + 主题 + 微拟物全量展厅，走 Layout 路由包裹
 dashboard/: /dashboard/* 子路由集合 (15 页 · 4 模块)，走 DashboardLayout (二段式) + RequireAuth 包裹
   - _PageShell.jsx: 共享框架 — PageShell (actions 行 · title/desc 已废弃) + PageSectionCard
