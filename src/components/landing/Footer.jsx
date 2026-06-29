@@ -23,9 +23,9 @@ const LINK_GROUPS = [
   {
     title: '资源',
     links: [
-      { label: '文档', href: '#' },
-      { label: '博客', href: '#' },
+      { label: '文章资讯', href: '/article-consulting' },
       { label: '案例研究', href: '#' },
+      { label: '博客', href: '#' },
       { label: '更新日志', href: '#' },
     ],
   },

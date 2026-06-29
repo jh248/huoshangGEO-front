@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { label: '首页', to: '/' },
   { label: '品牌诊断', to: '/brand-diagnosis' },
+  { label: '文章资讯', to: '/article-consulting' },
 ]
 
 function Header({ transparent = false }) {
